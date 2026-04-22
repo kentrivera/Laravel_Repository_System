@@ -36,6 +36,8 @@
                 return '—';
             }
         };
+
+        $parentPath = dirname($path) === '.' ? '' : dirname($path);
     @endphp
 
     <div class="px-4 sm:px-6 lg:px-8 py-8">
@@ -52,8 +54,9 @@
                             Root
                         </a>
                         @if ($path !== '')
-                            <a href="{{ route('repository.index', ['path' => dirname($path) === '.' ? '' : dirname($path)]) }}" class="inline-flex items-center rounded-md bg-white/15 px-3 py-2 text-sm font-medium text-white hover:bg-white/25">
-                                Up
+                            <a href="{{ route('repository.index', ['path' => $parentPath]) }}" class="inline-flex items-center gap-1 rounded-md bg-white/15 px-3 py-2 text-sm font-medium text-white hover:bg-white/25" title="Back to parent folder">
+                                <span aria-hidden="true">←</span>
+                                <span>Back</span>
                             </a>
                         @endif
                     </div>
@@ -153,13 +156,53 @@
                             @forelse ($files as $file)
                                 <tr class="hover:bg-slate-50">
                                     <td class="px-5 py-3">
-                                        <div class="font-medium text-slate-900">📄 {{ $file['name'] }}</div>
+                                        @if ($file['preview'])
+                                            <button type="button" onclick="var row=this.closest('tr'); if(!row) return; var preview=row.querySelector('details[data-preview]'); if(preview){ preview.open=true; }" class="font-medium text-slate-900 hover:text-emerald-700 hover:underline">
+                                                📄 {{ $file['name'] }}
+                                            </button>
+                                        @else
+                                            <div class="font-medium text-slate-900">📄 {{ $file['name'] }}</div>
+                                        @endif
                                         <div class="text-xs text-slate-500 break-all">{{ $file['path'] }}</div>
                                     </td>
                                     <td class="px-5 py-3 text-slate-500">{{ $modifiedLabel($file['modified']) }}</td>
                                     <td class="px-5 py-3 text-slate-500">{{ $humanBytes($file['size']) }}</td>
                                     <td class="px-5 py-3">
                                         <div class="flex flex-wrap items-center gap-2">
+                                            @if ($file['preview'])
+                                                <details class="group" data-preview>
+                                                    <summary class="cursor-pointer select-none rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100">View</summary>
+                                                    <div class="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-[1px]"></div>
+                                                    <div class="fixed left-1/2 top-1/2 z-50 w-[min(92vw,48rem)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
+                                                        <div class="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                                                            <div class="min-w-0">
+                                                                <div class="truncate text-sm font-semibold text-slate-900">{{ $file['name'] }}</div>
+                                                                <div class="truncate text-xs text-slate-500">{{ $file['path'] }}</div>
+                                                            </div>
+                                                            <div class="flex items-center gap-3">
+                                                                <span class="text-xs text-slate-500">Read-only preview</span>
+                                                                <button type="button" onclick="this.closest('details').removeAttribute('open')" class="rounded-md px-2 py-1 text-slate-600 hover:bg-slate-100" aria-label="Close preview">
+                                                                    ✕
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="max-h-[60vh] overflow-auto p-4">
+                                                            <pre class="whitespace-pre-wrap break-words rounded-md bg-slate-50 p-3 text-xs text-slate-800 ring-1 ring-slate-200">{{ $file['preview']['content'] }}</pre>
+                                                            @if ($file['preview']['truncated'])
+                                                                <div class="mt-2 text-xs text-amber-700">Preview is truncated. Use Edit to view or modify the full content.</div>
+                                                            @endif
+                                                        </div>
+
+                                                        <div class="flex justify-end border-t border-slate-200 px-4 py-3">
+                                                            <button type="button" onclick="this.closest('details').removeAttribute('open')" class="rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800">
+                                                                Close
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </details>
+                                            @endif
+
                                             <a href="{{ route('repository.download', ['path' => $file['path']]) }}" class="rounded-md px-2 py-1 text-slate-700 hover:bg-slate-100">Download</a>
 
                                             @if ($file['editable'])

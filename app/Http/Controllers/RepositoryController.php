@@ -20,6 +20,7 @@ class RepositoryController extends Controller
     ];
 
     private const MAX_EDIT_BYTES = 512 * 1024; // 512KB
+    private const MAX_PREVIEW_BYTES = 8192; // 8KB
 
     public function index(Request $request)
     {
@@ -67,6 +68,7 @@ class RepositoryController extends Controller
                     'modified' => $modified,
                     'size' => $size,
                     'editable' => $this->isEditable($filePath, $size),
+                    'preview' => $this->buildPreview($disk, $filePath, $size),
                 ];
             })
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
@@ -440,6 +442,31 @@ class RepositoryController extends Controller
         $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
 
         return in_array($ext, self::EDITABLE_EXTENSIONS, true);
+    }
+
+    private function buildPreview(FilesystemAdapter $disk, string $path, ?int $size): ?array
+    {
+        if (!$this->isEditable($path, $size)) {
+            return null;
+        }
+
+        try {
+            $content = (string) $disk->get($path);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $length = strlen($content);
+        $isTruncated = $length > self::MAX_PREVIEW_BYTES;
+
+        if ($isTruncated) {
+            $content = substr($content, 0, self::MAX_PREVIEW_BYTES);
+        }
+
+        return [
+            'content' => $content,
+            'truncated' => $isTruncated,
+        ];
     }
 
     private function breadcrumbs(string $path): array
